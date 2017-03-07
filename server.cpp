@@ -7,23 +7,7 @@
 Server::Server(QObject *parent) :
     QTcpServer(parent)
 {
-
-}
-
-Server::Server(quint16 port, QObject *parent) :
-    QTcpServer(parent)
-{
     m_clientSocket = nullptr;
-    m_port = port;
-    foreach (const QHostAddress &address, QNetworkInterface::allAddresses()) {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol && address != QHostAddress(QHostAddress::LocalHost))
-            m_ip = address.toString();
-    }
-    if (this->listen(QHostAddress(m_ip), m_port)) {
-        qDebug() << "Server started listening on" << this->serverAddress() << ":" << this->serverPort();
-    } else {
-        qDebug() << "Server failed to start";
-    }
 }
 
 void Server::initialize(QThread &t)
@@ -46,13 +30,19 @@ void Server::incomingConnection(qintptr handle)
 
     qDebug() << "Server has connected with client successfully";
 
-    m_clientSocket->write("Hello client, I'm the server!");
-
+    QHostAddress addr = m_clientSocket->peerAddress();
+    quint16 port = m_clientSocket->peerPort();
+    QString msg = "Connected to client at " + addr.toString() + ":" + QString::number(port) + " successfully";
+    emit statusUpdate(msg);
 }
 
 void Server::disconnected()
 {
     qDebug() << "Server disconnected from client";
+    QHostAddress addr = m_clientSocket->peerAddress();
+    quint16 port = m_clientSocket->peerPort();
+    QString msg = "Client at " + addr.toString() + ":" + QString::number(port) + " disconnected";
+    emit statusUpdate(msg);
     m_clientSocket->deleteLater();
 }
 
@@ -70,8 +60,18 @@ void Server::readyRead()
 
 void Server::run()
 {
-    // Dummy run since the QTcpServer appears to stay alive
-    // by default.
+    QHostAddress ip;
+    foreach (const QHostAddress &address, QNetworkInterface::allAddresses()) {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && address != QHostAddress(QHostAddress::LocalHost))
+            ip = address;
+    }
+    if (this->listen(ip, 0)) {
+        QString msg = "Listening for a client connection on " + ip.toString() + ":" + QString::number(this->serverPort());
+        qDebug() << msg;
+        emit statusUpdate(msg);
+    } else {
+        qDebug() << "Server failed to start";
+    }
 }
 
 void Server::sendMsg(QString string)

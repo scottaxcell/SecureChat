@@ -24,26 +24,43 @@ Client::Client(QString ip, quint16 port, QObject *parent) :
 
 void Client::connectToServer()
 {
+    QString msg = "Connecting to server at " + m_ip + ":" + QString::number(m_port) + "...";
+    emit statusUpdate(msg);
     qDebug() << "Client attempting to connect to" << m_ip << ":" << m_port;
 
     m_socket->connectToHost(QHostAddress(m_ip), m_port);
-    if (!m_socket->waitForConnected()) {
-        qDebug() << "Client waitForConnected faile with error '" << m_socket->errorString() << "'";
+    if (!m_socket->waitForConnected(10000)) {
+        QString msg = "Client failed to connect to server with error '" + m_socket->errorString() + "'";
+        qDebug() << msg;
+        emit statusUpdate(msg);
     }
 
 }
 
 void Client::connected()
 {
+    QHostAddress addr = m_socket->peerAddress();
+    quint16 port = m_socket->peerPort();
+    QString msg = "Connected to server at " + addr.toString() + ":" + QString::number(port) + " successfully";
+    emit statusUpdate(msg);
+
     qDebug() << "Client connected to server";
 
     // Send first message to server
-    m_socket->write("Hola server, I'm the client!");
+    //m_socket->write("Hola server, I'm the client!");
+
+    // TODO encrypt AES key
+    // TODO send encrypted AES key (prepend msgType == AES to msg)
+    //m_clientSocket->write("Hello client, I'm the server!");
 }
 
 void Client::disconnected()
 {
     qDebug() << "Client disconnected from server";
+    QHostAddress addr = m_socket->peerAddress();
+    quint16 port = m_socket->peerPort();
+    QString msg = "Server at " + addr.toString() + ":" + QString::number(port) + " disconnected";
+    emit statusUpdate(msg);
 }
 
 void Client::bytesWritten(qint64 bytes)
@@ -54,7 +71,6 @@ void Client::bytesWritten(qint64 bytes)
 void Client::readyRead()
 {
     qDebug() << "Client read:";
-    //qDebug() << m_socket->readAll();
     emit msgReceived(m_socket->readAll());
 }
 

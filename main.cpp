@@ -4,7 +4,8 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    SecureChat w(argc, argv);
+    QStringList args = QCoreApplication::arguments();
+    SecureChat w(args);
     w.show();
 
     return a.exec();
