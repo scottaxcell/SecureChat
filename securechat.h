@@ -16,6 +16,15 @@ public:
     explicit SecureChat(int argc, char **argv, QWidget *parent = 0);
     ~SecureChat();
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *ev);
+
+signals:
+    void msgInput(QString);
+
+public slots:
+    void updateLog(QByteArray);
+
 private:
     Ui::SecureChat *ui;
 };

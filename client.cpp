@@ -27,9 +27,7 @@ void Client::connectToServer()
     qDebug() << "Client attempting to connect to" << m_ip << ":" << m_port;
 
     m_socket->connectToHost(QHostAddress(m_ip), m_port);
-    if (m_socket->waitForConnected()) {
-        qDebug() << "Client connected to server";
-    } else {
+    if (!m_socket->waitForConnected()) {
         qDebug() << "Client waitForConnected faile with error '" << m_socket->errorString() << "'";
     }
 
@@ -56,5 +54,23 @@ void Client::bytesWritten(qint64 bytes)
 void Client::readyRead()
 {
     qDebug() << "Client read:";
-    qDebug() << m_socket->readAll();
+    //qDebug() << m_socket->readAll();
+    emit msgReceived(m_socket->readAll());
 }
+
+void Client::run()
+{
+    connectToServer();
+}
+
+void Client::initialize(QThread &t)
+{
+    connect(&t, SIGNAL(started()), this, SLOT(run()));
+}
+
+void Client::sendMsg(QString string)
+{
+    QByteArray byteArray = string.toUtf8();
+    m_socket->write(byteArray);
+}
+

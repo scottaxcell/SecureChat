@@ -12,15 +12,18 @@ public:
     explicit Client(QString ip, quint16 port, QObject *parent = 0);
 
     void connectToServer();
+    void initialize(QThread &t);
 
 signals:
+    void msgReceived(QByteArray);
 
 public slots:
     void connected();
     void disconnected();
     void bytesWritten (qint64 bytes);
     void readyRead();
-
+    void run();
+    void sendMsg(QString);
 
 private:
     QString m_ip;

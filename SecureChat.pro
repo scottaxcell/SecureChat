@@ -35,4 +35,5 @@ HEADERS  += securechat.h \
 FORMS    += securechat.ui
 
 DISTFILES += \
-    run.sh
+    run.sh \
+    Notes.txt

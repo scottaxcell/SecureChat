@@ -26,15 +26,9 @@ Server::Server(quint16 port, QObject *parent) :
     }
 }
 
-void Server::initialize()
+void Server::initialize(QThread &t)
 {
-    //qDebug() << "Server listening on " << m_ip << ":" << m_port;
-    if (this->listen(QHostAddress::Any, m_port)) {
-    //if (this->listen(QHostAddress(m_ip), m_port)) {
-        qDebug() << "Server started listening on" << this->serverAddress() << ":" << this->serverPort();
-    } else {
-        qDebug() << "Server failed to start";
-    }
+    connect(&t, SIGNAL(started()), this, SLOT(run()));
 }
 
 void Server::incomingConnection(qintptr handle)
@@ -69,6 +63,20 @@ void Server::bytesWritten(qint64 bytes)
 
 void Server::readyRead()
 {
-    qDebug() << "Server read:";
-    qDebug() << m_clientSocket->readAll();
+    qDebug() << "Server readyRead";
+    //qDebug() << m_clientSocket->readAll();
+    emit msgReceived(m_clientSocket->readAll());
 }
+
+void Server::run()
+{
+    // Dummy run since the QTcpServer appears to stay alive
+    // by default.
+}
+
+void Server::sendMsg(QString string)
+{
+    QByteArray byteArray = string.toUtf8();
+    m_clientSocket->write(byteArray);
+}
+

@@ -1,0 +1,8 @@
+======
+|TODO|
+======
+
+1. If need be, thread the socket encryption/decryption/writing/reading.
+2. Add event filter to monitor lineEdit, sends message to friend
+3. Update textBrowser whenever receive message from socket
+4.

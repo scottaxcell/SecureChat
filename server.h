@@ -12,18 +12,21 @@ public:
     explicit Server(QObject *parent = 0);
     explicit Server(quint16 port, QObject *parent = 0);
 
-    void initialize();
+    void initialize(QThread &t);
 
 protected:
     void incomingConnection(qintptr handle);
 
 signals:
+    void msgReceived(QByteArray);
 
 public slots:
     //void connected();
     void disconnected();
     void bytesWritten (qint64 bytes);
     void readyRead();
+    void run();
+    void sendMsg(QString);
 
 private:
     quint16 m_port;
