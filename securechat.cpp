@@ -33,6 +33,10 @@ SecureChat::SecureChat(QWidget *parent) :
 
 SecureChat::~SecureChat()
 {
+    // OpenSSL cleanup
+    EVP_cleanup();
+    ERR_free_strings();
+
     delete ui;
 }
 
@@ -77,8 +81,14 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
         qCritical() << "ERROR: Private PEM does not exist" << privFile;
         exit(1);
     }
-    RSA *pubRSA = getPublicKey(pubFile);
-    RSA *privRSA = getPrivateKey(privFile);
+
+    // Initialize OpenSSL algorithms
+    ERR_load_CRYPTO_strings();
+    OpenSSL_add_all_algorithms();
+    OPENSSL_config(nullptr);
+
+    RSA *pubRSA = getPublicKey(pubFile); // Leaks memory, 256 bytes is minimal.
+    RSA *privRSA = getPrivateKey(privFile); // Leaks memory, 256 bytes is minimal.
 
     QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
 
@@ -109,7 +119,7 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
         QString ip = parser.value(ipOption);
         QString p = parser.value(portOption);
         quint16 port = parser.value(portOption).toUShort();
-        Client *client = new Client(ip, port);
+        Client *client = new Client(ip, port, pubRSA, privRSA);
 
         connect(this, SIGNAL(msgInput(QString)), client, SLOT(sendMsg(QString)));
         connect(client, SIGNAL(msgReceived(QByteArray)), this, SLOT(updateLog(QByteArray)));
@@ -123,7 +133,7 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
         //
         // Run a server
         //
-        Server *server = new Server();
+        Server *server = new Server(pubRSA, privRSA);
 
         connect(this, SIGNAL(msgInput(QString)), server, SLOT(sendMsg(QString)));
         connect(server, SIGNAL(msgReceived(QByteArray)), this, SLOT(updateLog(QByteArray)));

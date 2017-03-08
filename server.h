@@ -5,11 +5,13 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 
+#include "util.h"
+
 class Server : public QTcpServer
 {
     Q_OBJECT
 public:
-    explicit Server(QObject *parent = 0);
+    explicit Server(RSA *pubRSA, RSA *privRSA, QObject *parent = 0);
 
     // Initializes thread with this object
     void initialize(QThread &t);
@@ -40,6 +42,11 @@ private:
     quint16 m_port;
     QString m_ip;
     QTcpSocket *m_clientSocket;
+    RSA *m_pubRSA;
+    RSA *m_privRSA;
+
+    QByteArray encryptData(RSA *rsa, QByteArray &data);
+    QByteArray decryptData(RSA *rsa, QByteArray &data);
 
 };
 

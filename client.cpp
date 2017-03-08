@@ -8,11 +8,13 @@ Client::Client(QObject *parent) : QObject(parent)
 
 }
 
-Client::Client(QString ip, quint16 port, QObject *parent) :
+Client::Client(QString ip, quint16 port, RSA *pubRSA, RSA *privRSA, QObject *parent) :
     QObject(parent)
 {
     m_ip = ip;
     m_port = port;
+    m_pubRSA = pubRSA;
+    m_privRSA = privRSA;
 
     m_socket = new QTcpSocket(this);
 
@@ -90,3 +92,35 @@ void Client::sendMsg(QString string)
     m_socket->write(byteArray);
 }
 
+QByteArray Client::encryptData(RSA *rsa, QByteArray &data)
+{
+    QByteArray buffer;
+    int dataSize = data.length();
+    const unsigned char *from = (const unsigned char*)data.constData();
+    int rsaSize = RSA_size(rsa);
+    unsigned char *to = (unsigned char*)malloc(rsaSize);
+    int rv = RSA_public_encrypt(dataSize, (const unsigned char*)from, to, rsa, PADDING);
+    if (rv == -1) {
+        qCritical() << "ERROR: could not encrypt data with public key" << ERR_error_string(ERR_get_error(), nullptr);
+        return buffer;
+    }
+
+    buffer = QByteArray(reinterpret_cast<char*>(to), rv);
+    return buffer;
+}
+
+QByteArray Client::decryptData(RSA *rsa, QByteArray &data)
+{
+    QByteArray buffer;
+    const unsigned char *from = (const unsigned char*)data.constData();
+    int rsaSize = RSA_size(rsa);
+    unsigned char *to = (unsigned char*)malloc(rsaSize);
+    int rv = RSA_private_decrypt(rsaSize, from, to, rsa, PADDING);
+    if (rv == -1) {
+        qCritical() << "ERROR: could not dencrypt data with private key" << ERR_error_string(ERR_get_error(), nullptr);
+        return buffer;
+    }
+
+    buffer = QByteArray::fromRawData((const char*)to, rv);
+    return buffer;
+}
