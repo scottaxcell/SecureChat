@@ -9,6 +9,7 @@
 
 #include "server.h"
 #include "client.h"
+#include "util.h"
 
 #include <iostream>
 
@@ -76,7 +77,22 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
         qCritical() << "ERROR: Private PEM does not exist" << privFile;
         exit(1);
     }
+    RSA *pubRSA = getPublicKey(pubFile);
+    RSA *privRSA = getPrivateKey(privFile);
 
+    QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
+
+    QByteArray encrypted = encryptData(pubRSA,plain);
+    QByteArray decrypted = decryptData(privRSA,encrypted);
+
+
+    qDebug() << plain;
+    qDebug() << "encrypted size:" << encrypted.size();
+    qDebug() << encrypted.toBase64();
+    qDebug() << "decrypted size:" << decrypted.size();
+    qDebug() << decrypted;
+
+    exit(0);
 
     if (parser.isSet(ipOption) || parser.isSet(portOption)) {
         //
@@ -193,4 +209,95 @@ void SecureChat::updateLog(QByteArray bytes)
 void SecureChat::updateLog(QString string)
 {
     ui->textBrowser->append(string);
+}
+
+RSA *SecureChat::getPublicKey(QByteArray &data)
+{
+    const char* keyStr = data.constData();
+    BIO* bio = BIO_new_mem_buf((void*)keyStr, -1);
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+
+    RSA *rsa = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
+    if (!rsa) {
+        qCritical() << "ERROR: cound not load public key";
+        return nullptr;
+    }
+
+    BIO_free(bio);
+    return rsa;
+}
+
+RSA *SecureChat::getPublicKey(QString fileName)
+{
+    QByteArray data = readPEMFile(fileName);
+    return getPublicKey(data);
+}
+
+QByteArray SecureChat::readPEMFile(QString fileName)
+{
+    QByteArray data;
+    QFile file(fileName);
+    if (!file.open(QFile::ReadOnly)) {
+        qCritical() << "ERROR: unable to open PEM file" << file.errorString();
+        return data;
+    }
+
+    data = file.readAll();
+    file.close();
+    return data;
+}
+
+RSA *SecureChat::getPrivateKey(QByteArray &data)
+{
+    const char* keyStr = data.constData();
+    BIO* bio = BIO_new_mem_buf((void*)keyStr, -1);
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+
+    RSA *rsa = PEM_read_bio_RSAPrivateKey(bio, nullptr, nullptr, nullptr);
+    if (!rsa) {
+        qCritical() << "ERROR: cound not load private key";
+        return nullptr;
+    }
+
+    BIO_free(bio);
+    return rsa;
+}
+
+RSA *SecureChat::getPrivateKey(QString fileName)
+{
+    QByteArray data = readPEMFile(fileName);
+    return getPrivateKey(data);
+}
+
+QByteArray SecureChat::encryptData(RSA *rsa, QByteArray &data)
+{
+    QByteArray buffer;
+    int dataSize = data.length();
+    const unsigned char *from = (const unsigned char*)data.constData();
+    int rsaSize = RSA_size(rsa);
+    unsigned char *to = (unsigned char*)malloc(rsaSize);
+    int rv = RSA_public_encrypt(dataSize, (const unsigned char*)from, to, rsa, PADDING);
+    if (rv == -1) {
+        qCritical() << "ERROR: could not encrypt data with public key" << ERR_error_string(ERR_get_error(), nullptr);
+        return buffer;
+    }
+
+    buffer = QByteArray(reinterpret_cast<char*>(to), rv);
+    return buffer;
+}
+
+QByteArray SecureChat::decryptData(RSA *rsa, QByteArray &data)
+{
+    QByteArray buffer;
+    const unsigned char *from = (const unsigned char*)data.constData();
+    int rsaSize = RSA_size(rsa);
+    unsigned char *to = (unsigned char*)malloc(rsaSize);
+    int rv = RSA_private_decrypt(rsaSize, from, to, rsa, PADDING);
+    if (rv == -1) {
+        qCritical() << "ERROR: could not dencrypt data with private key" << ERR_error_string(ERR_get_error(), nullptr);
+        return buffer;
+    }
+
+    buffer = QByteArray::fromRawData((const char*)to, rv);
+    return buffer;
 }

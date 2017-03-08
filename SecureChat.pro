@@ -26,14 +26,21 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp\
         securechat.cpp \
     server.cpp \
-    client.cpp
+    client.cpp \
+    util.cpp
 
 HEADERS  += securechat.h \
     server.h \
-    client.h
+    client.h \
+    util.h
 
 FORMS    += securechat.ui
 
 DISTFILES += \
     run.sh \
     Notes.txt
+
+INCLUDEPATH += /usr/local/Cellar/openssl/1.0.2g/include
+
+LIBS += /usr/local/Cellar/openssl/1.0.2g/lib/libcrypto.a
+LIBS += /usr/local/Cellar/openssl/1.0.2g/lib/libssl.a
