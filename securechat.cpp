@@ -47,6 +47,7 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
     // UI setup
     ui->setupUi(this);
     ui->lineEdit->installEventFilter(this);
+    connect(ui->sendMsgButton, SIGNAL(clicked()), this, SLOT(sendButtonClicked()));
 
     // Parse the command line arguments
     QCommandLineParser parser;
@@ -90,20 +91,6 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
     RSA *pubRSA = getPublicKey(pubFile); // Leaks memory, 256 bytes is minimal.
     RSA *privRSA = getPrivateKey(privFile); // Leaks memory, 256 bytes is minimal.
 
-//    QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
-
-//    QByteArray encrypted = encryptData(pubRSA,plain);
-//    QByteArray decrypted = decryptData(privRSA,encrypted);
-
-
-//    qDebug() << plain;
-//    qDebug() << "encrypted size:" << encrypted.size();
-//    qDebug() << encrypted.toBase64();
-//    qDebug() << "decrypted size:" << decrypted.size();
-//    qDebug() << decrypted;
-
-//    exit(0);
-
     if (parser.isSet(ipOption) || parser.isSet(portOption)) {
         //
         // Run a client
@@ -144,48 +131,16 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
         server->moveToThread(t);
         t->start();
     }
+}
 
-
-
-
-    //    if (argc != 2) {
-    //        std::cerr << "USAGE: ./SecureChat [server] [client]";
-    //        exit(1);
-    //    }
-
-    //    QString type(argv[1]);
-    //    if (type == "server") {
-    //        quint16 port = 61723;
-    //        Server *server = new Server(port);
-
-    //        connect(this, SIGNAL(msgInput(QString)), server, SLOT(sendMsg(QString)));
-    //        connect(server, SIGNAL(msgReceived(QByteArray)), this, SLOT(updateLog(QByteArray)));
-    //        connect(server, SIGNAL(updateLog(QString)), this, SLOT(updateLog(QString)));
-
-    //        QThread *t = new QThread();
-    //        server->initialize(*t);
-    //        server->moveToThread(t);
-    //        t->start();
-    //    } else if (type == "client") {
-    //        quint16 port = 61723;
-    //        QString ip = "10.0.0.10";
-    //        Client *client = new Client(ip, port);
-
-    //        connect(this, SIGNAL(msgInput(QString)), client, SLOT(sendMsg(QString)));
-    //        connect(client, SIGNAL(msgReceived(QByteArray)), this, SLOT(updateLog(QByteArray)));
-    //        connect(client, SIGNAL(updateLog(QString)), this, SLOT(updateLog(QString)));
-
-    //        QThread *t = new QThread();
-    //        client->initialize(*t);
-    //        client->moveToThread(t);
-    //        t->start();
-    //    }
-
-    //    ui->lineEdit->installEventFilter(this);
-
-
-
-
+void SecureChat::sendButtonClicked()
+{
+    QString msg = ui->lineEdit->text();
+    if (msg.size()) {
+        emit msgInput(msg);
+        ui->textBrowser->append("You: " + msg);
+        ui->lineEdit->clear();
+    }
 }
 
 bool SecureChat::eventFilter(QObject *obj, QEvent *event)

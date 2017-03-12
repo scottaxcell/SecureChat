@@ -51,6 +51,8 @@ public slots:
     void updateLog(QByteArray);
     void updateLog(QString);
 
+    void sendButtonClicked();
+
 private:
     Ui::SecureChat *ui;
 

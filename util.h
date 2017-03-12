@@ -13,10 +13,6 @@
 #include <openssl/aes.h>
 #include <openssl/rand.h>
 
-// The PADDING parameter means RSA will pad your data for you
-//#define PADDING RSA_PKCS1_OAEP_PADDING
-//#define PADDING RSA_PKCS1_PADDING
-//#define PADDING RSA_NO_PADDING
 #define PADDING RSA_PKCS1_PADDING
 #define KEYSIZE 32
 #define IVSIZE 32
