@@ -90,19 +90,19 @@ SecureChat::SecureChat(QStringList args, QWidget *parent) :
     RSA *pubRSA = getPublicKey(pubFile); // Leaks memory, 256 bytes is minimal.
     RSA *privRSA = getPrivateKey(privFile); // Leaks memory, 256 bytes is minimal.
 
-    QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
+//    QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
 
-    QByteArray encrypted = encryptData(pubRSA,plain);
-    QByteArray decrypted = decryptData(privRSA,encrypted);
+//    QByteArray encrypted = encryptData(pubRSA,plain);
+//    QByteArray decrypted = decryptData(privRSA,encrypted);
 
 
-    qDebug() << plain;
-    qDebug() << "encrypted size:" << encrypted.size();
-    qDebug() << encrypted.toBase64();
-    qDebug() << "decrypted size:" << decrypted.size();
-    qDebug() << decrypted;
+//    qDebug() << plain;
+//    qDebug() << "encrypted size:" << encrypted.size();
+//    qDebug() << encrypted.toBase64();
+//    qDebug() << "decrypted size:" << decrypted.size();
+//    qDebug() << decrypted;
 
-    exit(0);
+//    exit(0);
 
     if (parser.isSet(ipOption) || parser.isSet(portOption)) {
         //

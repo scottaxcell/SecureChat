@@ -1,4 +1,5 @@
 #include "client.h"
+#include "util.h"
 
 #include <QtCore>
 #include <QHostAddress>
@@ -22,6 +23,9 @@ Client::Client(QString ip, quint16 port, RSA *pubRSA, RSA *privRSA, QObject *par
     connect(m_socket, SIGNAL(connected()), this, SLOT(connected()));
     connect(m_socket, SIGNAL(disconnected()), this, SLOT(disconnected()));
     connect(m_socket, SIGNAL(readyRead()), this, SLOT(readyRead()));
+
+    // TODO create AES passphrase
+    m_passphrase = "p@ssw0rd";
 }
 
 void Client::connectToServer()
@@ -54,6 +58,13 @@ void Client::connected()
     // TODO encrypt AES key
     // TODO send encrypted AES key (prepend msgType == AES to msg)
     //m_clientSocket->write("Hello client, I'm the server!");
+
+    //    QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
+    //    QByteArray encrypted = Util::rsaPublicEncrypt(m_pubRSA, plain);
+    //    m_socket->write(encrypted);
+
+    QByteArray encrypted = Util::rsaPublicEncrypt(m_pubRSA, m_passphrase);
+    m_socket->write(encrypted);
 }
 
 void Client::disconnected()
@@ -73,7 +84,10 @@ void Client::bytesWritten(qint64 bytes)
 void Client::readyRead()
 {
     qDebug() << "Client read:";
-    emit msgReceived(m_socket->readAll());
+    QByteArray received = m_socket->readAll();
+    QByteArray decrypted = Util::aesDecrypt(m_passphrase, received);
+    emit msgReceived(decrypted);
+    //emit msgReceived(m_socket->readAll());
 }
 
 void Client::run()
@@ -89,38 +103,15 @@ void Client::initialize(QThread &t)
 void Client::sendMsg(QString string)
 {
     QByteArray byteArray = string.toUtf8();
-    m_socket->write(byteArray);
+
+    // Encrypt with AES
+    QByteArray encrypted = Util::aesEncrypt(m_passphrase, byteArray);
+
+    // Write to socket
+    m_socket->write(encrypted);
 }
 
-QByteArray Client::encryptData(RSA *rsa, QByteArray &data)
-{
-    QByteArray buffer;
-    int dataSize = data.length();
-    const unsigned char *from = (const unsigned char*)data.constData();
-    int rsaSize = RSA_size(rsa);
-    unsigned char *to = (unsigned char*)malloc(rsaSize);
-    int rv = RSA_public_encrypt(dataSize, (const unsigned char*)from, to, rsa, PADDING);
-    if (rv == -1) {
-        qCritical() << "ERROR: could not encrypt data with public key" << ERR_error_string(ERR_get_error(), nullptr);
-        return buffer;
-    }
 
-    buffer = QByteArray(reinterpret_cast<char*>(to), rv);
-    return buffer;
-}
 
-QByteArray Client::decryptData(RSA *rsa, QByteArray &data)
-{
-    QByteArray buffer;
-    const unsigned char *from = (const unsigned char*)data.constData();
-    int rsaSize = RSA_size(rsa);
-    unsigned char *to = (unsigned char*)malloc(rsaSize);
-    int rv = RSA_private_decrypt(rsaSize, from, to, rsa, PADDING);
-    if (rv == -1) {
-        qCritical() << "ERROR: could not dencrypt data with private key" << ERR_error_string(ERR_get_error(), nullptr);
-        return buffer;
-    }
 
-    buffer = QByteArray::fromRawData((const char*)to, rv);
-    return buffer;
-}
+

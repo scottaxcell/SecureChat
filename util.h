@@ -20,7 +20,6 @@
 #define PADDING RSA_PKCS1_PADDING
 #define KEYSIZE 32
 #define IVSIZE 32
-#define BLOCKSIZE 256
 #define SALTSIZE 8
 
 class Util
@@ -28,15 +27,14 @@ class Util
 public:
     Util();
 
-//    static RSA *getPublicKey(QByteArray &data);
-//    static RSA *getPublicKey(QString fileName);
-//    static QByteArray readPEMFile(QString fileName);
+    static QByteArray getRandomBytes(int size);
 
-//    static RSA *getPrivateKey(QByteArray &data);
-//    static RSA *getPrivateKey(QString fileName);
+    static QByteArray rsaPublicEncrypt(RSA *rsa, QByteArray &data);
+    static QByteArray rsaPrivateDecrypt(RSA *rsa, QByteArray &data);
 
-//    static QByteArray encryptData(RSA *rsa, QByteArray &data);
-//    static QByteArray decryptData(RSA *rsa, QByteArray &data);
+    static QByteArray aesEncrypt(QByteArray &passphrase, QByteArray &data);
+    static QByteArray aesDecrypt(QByteArray &passphrase, QByteArray &data);
+
 };
 
 #endif // UTIL_H

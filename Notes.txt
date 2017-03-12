@@ -6,4 +6,6 @@
 2. DONE Add event filter to monitor lineEdit, sends message to friend
 3. DONE Update textBrowser whenever receive message from socket
 4. Add AES encryption/decryption methods
-5. Add RSA encryption/decryption methods
+5. DONE Add RSA encryption/decryption methods
+6. Fix mallocs to free memory. a char* can be reinterpret_cast'ed in a QByteArray to make a copy
+

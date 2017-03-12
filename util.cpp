@@ -7,86 +7,185 @@ Util::Util()
 
 }
 
-//static RSA *getPublicKey(QByteArray &data)
-//{
-//    const char* keyStr = data.constData();
-//    BIO* bio = BIO_new_mem_buf((void*)keyStr, -1);
-//    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+QByteArray Util::getRandomBytes(int size)
+{
+    unsigned char arr[size];
+    RAND_bytes(arr,size);
 
-//    RSA *rsa = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
-//    if (!rsa) {
-//        qCritical() << "ERROR: cound not load public key";
-//        return nullptr;
-//    }
+    QByteArray buffer = QByteArray(reinterpret_cast<char*>(arr), size);
+    return buffer;
+}
 
-//    BIO_free(bio);
-//    return rsa;
-//}
+QByteArray Util::rsaPublicEncrypt(RSA *rsa, QByteArray &data)
+{
+    QByteArray buffer;
+    int dataSize = data.length();
+    const unsigned char *from = (const unsigned char*)data.constData();
+    int rsaSize = RSA_size(rsa);
+    unsigned char *to = (unsigned char*)malloc(rsaSize);
+    int rv = RSA_public_encrypt(dataSize, (const unsigned char*)from, to, rsa, PADDING);
+    if (rv == -1) {
+        qCritical() << "ERROR: could not encrypt data with public key" << ERR_error_string(ERR_get_error(), nullptr);
+        return buffer;
+    }
 
-//static RSA *getPublicKey(QString fileName)
-//{
-//    QByteArray data = Util::readPEMFile(fileName);
-//    return getPublicKey(data);
-//}
+    buffer = QByteArray(reinterpret_cast<char*>(to), rv);
+    return buffer;
+}
 
-//static QByteArray readPEMFile(QString fileName)
-//{
-//    QByteArray data;
-//    QFile file(fileName);
-//    if (!file.open(QFile::ReadOnly)) {
-//        qCritical() << "ERROR: unable to open PEM file" << file.errorString();
-//        return data;
-//    }
+QByteArray Util::rsaPrivateDecrypt(RSA *rsa, QByteArray &data)
+{
+    QByteArray buffer;
+    const unsigned char *from = (const unsigned char*)data.constData();
+    int rsaSize = RSA_size(rsa);
+    unsigned char *to = (unsigned char*)malloc(rsaSize);
+    int rv = RSA_private_decrypt(rsaSize, from, to, rsa, PADDING);
+    if (rv == -1) {
+        qCritical() << "ERROR: could not dencrypt data with private key" << ERR_error_string(ERR_get_error(), nullptr);
+        return buffer;
+    }
 
-//    data = file.readAll();
-//    file.close();
-//    return data;
-//}
+    buffer = QByteArray::fromRawData((const char*)to, rv);
+    return buffer;
+}
 
-//static RSA *getPrivateKey(QByteArray &data)
-//{
-//    const char* keyStr = data.constData();
-//    BIO* bio = BIO_new_mem_buf((void*)keyStr, -1);
-//    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+QByteArray Util::aesEncrypt(QByteArray &passphrase, QByteArray &data)
+{
+    QByteArray msalt = getRandomBytes(SALTSIZE);
+    int rounds = 1;
+    unsigned char key[KEYSIZE];
+    unsigned char iv[IVSIZE];
 
-//    RSA *rsa = PEM_read_bio_RSAPrivateKey(bio, nullptr, nullptr, nullptr);
-//    if (!rsa) {
-//        qCritical() << "ERROR: cound not load private key";
-//        return nullptr;
-//    }
+    const unsigned char* salt = (const unsigned char*) msalt.constData();
+    const unsigned char* password = (const unsigned char*) passphrase.constData();
 
-//    BIO_free(bio);
-//    return rsa;
-//}
+    int i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt,password, passphrase.length(),rounds,key,iv);
 
-//static RSA *getPrivateKey(QString fileName)
-//{
-//    QByteArray data = readPEMFile(fileName);
-//    return getPrivateKey(data);
-//}
+    if(i != KEYSIZE)
+    {
+        qCritical() << "EVP_BytesToKey() error: " << ERR_error_string(ERR_get_error(), NULL);
+        return QByteArray();
+    }
 
-//static QByteArray encryptData(RSA *rsa, QByteArray &data)
-//{
-//    QByteArray buffer;
-//    int dataSize = data.length();
-//    const unsigned char *from = (const unsigned char*)data.constData();
-//    int rsaSize = RSA_size(rsa);
-//    unsigned char *to = (unsigned char*)malloc(rsaSize);
-//    int rv = RSA_public_encrypt(dataSize, (const unsigned char*)from, to, rsa, PADDING);
-//    if (rv == -1) {
-//        qCritical() << "ERROR: could not encrypt data with public key" << ERR_error_string(ERR_get_error(), nullptr);
-//        return buffer;
-//    }
+    EVP_CIPHER_CTX en;
+    EVP_CIPHER_CTX_init(&en);
 
-//    buffer = QByteArray(reinterpret_cast<char*>(to), rv);
-//    return buffer;
-//}
+    if(!EVP_EncryptInit_ex(&en, EVP_aes_256_cbc(),NULL,key, iv))
+    {
+        qCritical() << "EVP_EncryptInit_ex() failed " << ERR_error_string(ERR_get_error(), NULL);
+        return QByteArray();
+    }
 
-//static QByteArray decryptData(RSA *rsa, QByteArray &data)
-//{
-//    QByteArray buffer;
-//    return buffer;
-//}
+    char *input = data.data();
+    int len = data.size();
+
+    int c_len = len + AES_BLOCK_SIZE, f_len = 0;
+    unsigned char *ciphertext = (unsigned char*)malloc(c_len);
+
+    if(!EVP_EncryptInit_ex(&en, NULL, NULL, NULL, NULL))
+    {
+        qCritical() << "EVP_EncryptInit_ex() failed " << ERR_error_string(ERR_get_error(), NULL);
+        return QByteArray();
+    }
+
+    // May have to repeat this for large files
+
+    if(!EVP_EncryptUpdate(&en, ciphertext, &c_len,(unsigned char *)input, len))
+    {
+        qCritical() << "EVP_EncryptUpdate() failed " << ERR_error_string(ERR_get_error(), NULL);
+        return QByteArray();
+    }
+
+    if(!EVP_EncryptFinal(&en, ciphertext+c_len, &f_len))
+    {
+        qCritical() << "EVP_EncryptFinal_ex() failed "  << ERR_error_string(ERR_get_error(), NULL);
+        return QByteArray();
+    }
+
+    len = c_len + f_len;
+    EVP_CIPHER_CTX_cipher(&en);
+
+    //ciphertext
+
+    QByteArray encrypted = QByteArray(reinterpret_cast<char*>(ciphertext), len);
+    QByteArray finished;
+    finished.append("Salted__");
+    finished.append(msalt);
+    finished.append(encrypted);
+
+    free(ciphertext);
+
+    return finished;
+}
+
+QByteArray Util::aesDecrypt(QByteArray &passphrase, QByteArray &data)
+{
+    QByteArray msalt;
+    if(QString(data.mid(0,8)) == "Salted__")
+    {
+        msalt = data.mid(8,8);
+        data = data.mid(16);
+    }
+    else
+    {
+        qWarning() << "Could not load salt from data!";
+        msalt = getRandomBytes(SALTSIZE);
+    }
+
+    int rounds = 1;
+    unsigned char key[KEYSIZE];
+    unsigned char iv[IVSIZE];
+    const unsigned char* salt = (const unsigned char*)msalt.constData();
+    const unsigned char* password = (const unsigned char*)passphrase.data();
+
+    int i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt,password, passphrase.length(),rounds,key,iv);
+
+    if(i != KEYSIZE)
+    {
+        qCritical() << "EVP_BytesToKey() error: " << ERR_error_string(ERR_get_error(), nullptr);
+        return QByteArray();
+    }
+
+    EVP_CIPHER_CTX de;
+    EVP_CIPHER_CTX_init(&de);
+
+    if(!EVP_DecryptInit_ex(&de,EVP_aes_256_cbc(), nullptr, key,iv ))
+    {
+        qCritical() << "EVP_DecryptInit_ex() failed" << ERR_error_string(ERR_get_error(), nullptr);
+        return QByteArray();
+    }
+
+    char *input = data.data();
+    int len = data.size();
+
+    int p_len = len, f_len = 0;
+    unsigned char *plaintext = (unsigned char *)malloc(p_len + AES_BLOCK_SIZE);
+
+    //May have to do this multiple times for large data???
+    if(!EVP_DecryptUpdate(&de, plaintext, &p_len, (unsigned char *)input, len))
+    {
+        qCritical() << "EVP_DecryptUpdate() failed " <<  ERR_error_string(ERR_get_error(), nullptr);
+        return QByteArray();
+    }
+
+    if(!EVP_DecryptFinal_ex(&de,plaintext+p_len,&f_len))
+    {
+        qCritical() << "EVP_DecryptFinal_ex() failed " <<  ERR_error_string(ERR_get_error(), nullptr);
+        return QByteArray();
+    }
+
+    len = p_len + f_len;
+
+    EVP_CIPHER_CTX_cleanup(&de);
+
+
+    QByteArray decrypted = QByteArray(reinterpret_cast<char*>(plaintext), len);
+    free(plaintext);
+
+    return decrypted;
+
+}
+
 
 
 
