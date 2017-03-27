@@ -63,16 +63,16 @@ QByteArray Util::aesEncrypt(QByteArray &passphrase, QByteArray &data)
 
     if(i != KEYSIZE)
     {
-        qCritical() << "EVP_BytesToKey() error: " << ERR_error_string(ERR_get_error(), NULL);
+        qCritical() << "EVP_BytesToKey() error: " << ERR_error_string(ERR_get_error(), nullptr);
         return QByteArray();
     }
 
     EVP_CIPHER_CTX en;
     EVP_CIPHER_CTX_init(&en);
 
-    if(!EVP_EncryptInit_ex(&en, EVP_aes_256_cbc(),NULL,key, iv))
+    if(!EVP_EncryptInit_ex(&en, EVP_aes_256_cbc(),nullptr,key, iv))
     {
-        qCritical() << "EVP_EncryptInit_ex() failed " << ERR_error_string(ERR_get_error(), NULL);
+        qCritical() << "EVP_EncryptInit_ex() failed " << ERR_error_string(ERR_get_error(), nullptr);
         return QByteArray();
     }
 
@@ -82,9 +82,9 @@ QByteArray Util::aesEncrypt(QByteArray &passphrase, QByteArray &data)
     int c_len = len + AES_BLOCK_SIZE, f_len = 0;
     unsigned char *ciphertext = (unsigned char*)malloc(c_len);
 
-    if(!EVP_EncryptInit_ex(&en, NULL, NULL, NULL, NULL))
+    if(!EVP_EncryptInit_ex(&en, nullptr, nullptr, nullptr, nullptr))
     {
-        qCritical() << "EVP_EncryptInit_ex() failed " << ERR_error_string(ERR_get_error(), NULL);
+        qCritical() << "EVP_EncryptInit_ex() failed " << ERR_error_string(ERR_get_error(), nullptr);
         return QByteArray();
     }
 
@@ -92,13 +92,13 @@ QByteArray Util::aesEncrypt(QByteArray &passphrase, QByteArray &data)
 
     if(!EVP_EncryptUpdate(&en, ciphertext, &c_len,(unsigned char *)input, len))
     {
-        qCritical() << "EVP_EncryptUpdate() failed " << ERR_error_string(ERR_get_error(), NULL);
+        qCritical() << "EVP_EncryptUpdate() failed " << ERR_error_string(ERR_get_error(), nullptr);
         return QByteArray();
     }
 
     if(!EVP_EncryptFinal(&en, ciphertext+c_len, &f_len))
     {
-        qCritical() << "EVP_EncryptFinal_ex() failed "  << ERR_error_string(ERR_get_error(), NULL);
+        qCritical() << "EVP_EncryptFinal_ex() failed "  << ERR_error_string(ERR_get_error(), nullptr);
         return QByteArray();
     }
 

@@ -18,6 +18,16 @@
 #define IVSIZE 32
 #define SALTSIZE 8
 
+#define FILEPKT 457
+#define MSGPKT 557
+#define PKTHEADERSIZE (sizeof(quint32) + sizeof(quint16))
+
+/*
+ * quint32 pktSize;
+ * quint16 pktType;
+ * QByeArray pktData;
+ */
+
 class Util
 {
 public:

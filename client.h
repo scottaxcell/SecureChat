@@ -39,6 +39,9 @@ public slots:
     // GUI calls this when user wants to send a message
     void sendMsg(QString);
 
+    // GUI calls this when user wants to send a file
+    void sendFile(QString);
+
 private:
     QString m_ip;
     quint16 m_port;

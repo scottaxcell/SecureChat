@@ -38,10 +38,13 @@ public slots:
     // GUI calls this when user wants to send a message
     void sendMsg(QString);
 
+    // GUI calls this when user wants to send a file
+    void sendFile(QString);
+
 private:
     quint16 m_port;
     QString m_ip;
-    QTcpSocket *m_clientSocket;
+    QTcpSocket *m_socket;
     RSA *m_pubRSA;
     RSA *m_privRSA;
     bool m_useAES;

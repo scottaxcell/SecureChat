@@ -47,7 +47,7 @@
      <string>Send</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label">
+   <widget class="QLabel" name="msgLabel">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -58,6 +58,42 @@
     </property>
     <property name="text">
      <string>Message:</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="fileLineEdit">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>370</y>
+      <width>391</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fileLabel">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>370</y>
+      <width>59</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>File:</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="sendFileButton">
+    <property name="geometry">
+     <rect>
+      <x>440</x>
+      <y>370</y>
+      <width>71</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Send FIle</string>
     </property>
    </widget>
   </widget>

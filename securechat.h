@@ -46,15 +46,22 @@ signals:
     // Notifies a thread that the user has input a message to send
     void msgInput(QString);
 
+    // Notifies a thread that the user has file to send
+    void sendFile(QString);
+
 public slots:
     // Writes to the textBrowser when notified by a thread
     void updateLog(QByteArray);
     void updateLog(QString);
 
     void sendButtonClicked();
+    void sendFileClicked();
+
+
 
 private:
     Ui::SecureChat *ui;
+    QDialog *fileSelector;
 
     RSA *getPublicKey(QByteArray &data);
     RSA *getPublicKey(QString fileName);

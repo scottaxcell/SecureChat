@@ -52,17 +52,7 @@ void Client::connected()
 
     qDebug() << "Client connected to server";
 
-    // Send first message to server
-    //m_socket->write("Hola server, I'm the client!");
-
-    // TODO encrypt AES key
-    // TODO send encrypted AES key (prepend msgType == AES to msg)
-    //m_clientSocket->write("Hello client, I'm the server!");
-
-    //    QByteArray plain = "The man in black fled into the desert and the gunslinger followed...";
-    //    QByteArray encrypted = Util::rsaPublicEncrypt(m_pubRSA, plain);
-    //    m_socket->write(encrypted);
-
+    qDebug() << "Client connected";
     QByteArray encrypted = Util::rsaPublicEncrypt(m_pubRSA, m_passphrase);
     m_socket->write(encrypted);
 }
@@ -83,10 +73,16 @@ void Client::bytesWritten(qint64 bytes)
 
 void Client::readyRead()
 {
-    qDebug() << "Client read:";
-    QByteArray received = m_socket->readAll();
-    QByteArray decrypted = Util::aesDecrypt(m_passphrase, received);
-    emit msgReceived(decrypted);
+    qDebug() << "Client readReady TODO";
+    QByteArray buffer;
+    while (m_socket->bytesAvailable() > 0) {
+        buffer.append(m_socket->readAll());
+        quint32 pktSize;
+
+    }
+    //    QByteArray received = m_socket->readAll();
+    //    QByteArray decrypted = Util::aesDecrypt(m_passphrase, received);
+    //    emit msgReceived(decrypted);
     //emit msgReceived(m_socket->readAll());
 }
 
@@ -102,13 +98,103 @@ void Client::initialize(QThread &t)
 
 void Client::sendMsg(QString string)
 {
-    QByteArray byteArray = string.toUtf8();
+    qDebug() << "Client sendMsg TODO";
+    QByteArray msgArray = string.toUtf8();
+    quint16 pktType = MSGPKT;
+
+    // Encrypt msg with AES before sending pkt
+    QByteArray encrypted = Util::aesEncrypt(m_passphrase, msgArray);
+    quint32 msgSize = encrypted.size();
+    quint32 pktSize = sizeof(quint32) + sizeof(pktType) + msgSize;
+
+    QByteArray pkt;
+    pkt.resize(pktSize);
+    memset(&pkt.data()[0], 0, pktSize);
+    memcpy(&pkt.data()[0], &pktSize, sizeof(pktSize));
+    memcpy(&pkt.data()[4], &pktType, sizeof(pktType));
+    memcpy(&pkt.data()[6], &encrypted.data()[0], msgSize);
+
+    qint64 numBytesSent = pktSize;
+    while (numBytesSent > 0) {
+        numBytesSent -= m_socket->write(pkt);
+    }
+}
+
+void Client::sendFile(QString fileName)
+{
+    qDebug() << "Server sendFile TODO encryption";
+    QString msg = "Reading " + fileName + "...";
+    emit statusUpdate(msg);
+
+    QFile file(fileName);
+    file.open(QFile::ReadOnly);
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    msg = "Read " + QString::number(fileData.size()) + " bytes from " + fileName;
+    emit statusUpdate(msg);
+
+    msg = "Sending file " + fileName + ", please wait...";
+    emit statusUpdate(msg);
+
+    QStringList fileNameSplit = fileName.split('/');
+    fileName = fileNameSplit.last();
+
+    quint16 pktType = FILEPKT;
+    quint32 fileNameSize = fileName.toUtf8().size();
+    quint32 fileSize = fileData.size();
+
+    quint32 tmpPktSize = sizeof(fileNameSize) + fileNameSize + fileSize;
+    QByteArray tmpPkt;
+    tmpPkt.resize(tmpPktSize);
+    memset(&tmpPkt.data()[0], 0, tmpPktSize);
+    memcpy(&tmpPkt.data()[0], &fileNameSize, sizeof(fileNameSize)); // 4
+    memcpy(&tmpPkt.data()[4], &fileName.toUtf8().data()[0], fileNameSize); // 3
+    memcpy(&tmpPkt.data()[4 + fileNameSize], &fileData.data()[0], fileSize); // N
+
+    QByteArray encrypted = Util::aesEncrypt(m_passphrase, tmpPkt);
+
+    //quint32 pktSize = sizeof(quint32) + sizeof(pktType) + sizeof(fileNameSize) + fileNameSize + encrypted.size();
+    quint32 pktSize = sizeof(quint32) + sizeof(pktType) + encrypted.size();
+
+    // pktSize
+    // pktType
+    // fileNameSize
+    // fileName
+
+    // quint32 pktSize = 4 + 2 + 4 + 3 + 196
+    QByteArray pkt;
+    pkt.resize(pktSize);
+    memset(&pkt.data()[0], 0, pktSize);
+    memcpy(&pkt.data()[0], &pktSize, sizeof(pktSize)); // 4
+    memcpy(&pkt.data()[4], &pktType, sizeof(pktType)); // 2
+    memcpy(&pkt.data()[6], &encrypted.data()[0], encrypted.size());
+    //    memcpy(&pkt.data()[6], &fileNameSize, sizeof(fileNameSize)); // 4
+    //    memcpy(&pkt.data()[10], &fileName.toUtf8().data()[0], fileNameSize); // 3
+    //    memcpy(&pkt.data()[10 + fileNameSize], &fileData.data()[0], fileSize); // 196
+
+    qDebug() << "pktSize:" << pktSize;
+    qDebug() << "pktType:" << pktType;
+    qDebug() << "fileNameSize:" << fileNameSize;
+    qDebug() << "fileName:" << fileName;
+    qDebug() << "fileData.size:" << fileSize;
+
+    qint64 numBytesSent = pktSize;
+    while (numBytesSent > 0) {
+        numBytesSent -= m_socket->write(pkt);
+    }
 
     // Encrypt with AES
-    QByteArray encrypted = Util::aesEncrypt(m_passphrase, byteArray);
+    //TODOQByteArray encrypted = Util::aesEncrypt(m_passphrase, pkt);
 
     // Write to socket
-    m_socket->write(encrypted);
+    //m_socket->write(encrypted);
+
+    // Send file contents now
+    // TODO
+
+    msg = "Successfully sent file " + fileName + " to friend";
+    emit statusUpdate(msg);
 }
 
 
