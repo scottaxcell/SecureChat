@@ -49,10 +49,7 @@ private:
     RSA *m_privRSA;
     bool m_useAES;
     QByteArray m_passphrase;
-
-
-    QByteArray encryptData(RSA *rsa, QByteArray &data);
-    QByteArray decryptData(RSA *rsa, QByteArray &data);
+    IncomingPacket m_icp;
 
 };
 

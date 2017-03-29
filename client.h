@@ -49,6 +49,7 @@ private:
     RSA *m_pubRSA;
     RSA *m_privRSA;
     QByteArray m_passphrase;
+    IncomingPacket m_icp;
 
     QByteArray encryptData(RSA *rsa, QByteArray &data);
     QByteArray decryptData(RSA *rsa, QByteArray &data);

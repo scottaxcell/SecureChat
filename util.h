@@ -2,6 +2,7 @@
 #define UTIL_H
 
 #include <QtCore>
+#include <QTcpSocket>
 
 // OpenSSL includes
 #include <openssl/rsa.h>
@@ -28,6 +29,29 @@
  * QByeArray pktData;
  */
 
+struct IncomingPacket
+{
+    quint32 pktSize;
+    quint16 pktType;
+    QByteArray encryptedBuffer;
+    quint32 bytesRead;
+    bool displayedFileUpdate;
+
+    IncomingPacket()
+    {
+        reset();
+    }
+
+    void reset()
+    {
+        pktSize = 0;
+        pktType = 0;
+        encryptedBuffer.clear();
+        bytesRead = 0;
+        displayedFileUpdate = false;
+    }
+};
+
 class Util
 {
 public:
@@ -41,6 +65,7 @@ public:
     static QByteArray aesEncrypt(QByteArray &passphrase, QByteArray &data);
     static QByteArray aesDecrypt(QByteArray &passphrase, QByteArray &data);
 
+    static void handleIncomingPacket(QTcpSocket *socket, IncomingPacket &icp);
 };
 
 #endif // UTIL_H
