@@ -16,8 +16,16 @@ As a describer of life and manners, he must be allowed to stand perhaps the firs
 
 README
 
-How to build on the commandline for linux
+Build Linux:
+mkdir linuxRelease
+cd linuxRelease
 /usr/lib64/qt5/bin/qmake-qt5 SecureChat.pro
+make all
+
+Build MacOS:
+mkdir macRelease
+cd macRelease
+/Users/scott/Qt/5.8/clang_64/bin/qmake ../SecureChat.pro
 make all
 
 How to run
