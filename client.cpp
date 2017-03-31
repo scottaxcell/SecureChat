@@ -16,18 +16,16 @@ Client::Client(QString ip, quint16 port, RSA *pubRSA, RSA *privRSA, QObject *par
     m_port = port;
     m_pubRSA = pubRSA;
     m_privRSA = privRSA;
-    m_socket = nullptr;
     m_icp = IncomingPacket();
 
-//    m_socket = new QTcpSocket(this);
+    m_socket = new QTcpSocket(this);
 
-//    connect(m_socket, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWritten(qint64)));
-//    connect(m_socket, SIGNAL(connected()), this, SLOT(connected()));
-//    connect(m_socket, SIGNAL(disconnected()), this, SLOT(disconnected()));
-//    connect(m_socket, SIGNAL(readyRead()), this, SLOT(readyRead()));
+    connect(m_socket, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWritten(qint64)));
+    connect(m_socket, SIGNAL(connected()), this, SLOT(connected()));
+    connect(m_socket, SIGNAL(disconnected()), this, SLOT(disconnected()));
+    connect(m_socket, SIGNAL(readyRead()), this, SLOT(readyRead()));
 
-    m_passphrase = "p@ssw0rd";
-//    m_passphrase = Util::getRandomBytes(15);
+    m_passphrase = Util::getRandomBytes(15);
 }
 
 void Client::connectToServer()
@@ -75,38 +73,23 @@ void Client::bytesWritten(qint64 bytes)
 
 void Client::readyRead()
 {
-    qDebug() << "Client readReady TODO";
-    while (m_socket->bytesAvailable() > 0) {
-        QByteArray buffer = m_socket->read(PKTHEADERSIZE);
-        quint32 pktSize;
-        quint16 pktType;
-        memcpy(&pktSize, &buffer.data()[0], sizeof(pktSize));
-        memcpy(&pktType, &buffer.data()[4], sizeof(pktType));
-        qDebug() << "pktSize:" << pktSize;
-        qDebug() << "pktType:" << pktType;
-        buffer.clear();
-        pktSize -= PKTHEADERSIZE;
+    Util::handleIncomingPacket(m_socket, m_icp);
 
-        if (pktType == FILEPKT) {
-            QString msg = "INFO: Receiving file from friend, please wait ...";
-            emit statusUpdate(msg);
-        }
-        qDebug() << "pktSize before while loop:" << pktSize;
+    if (m_icp.pktType == FILEPKT && m_icp.displayedFileUpdate == false) {
+        m_icp.displayedFileUpdate = true;
+        QString msg = "INFO: Receiving file from friend, please wait ...";
+        emit statusUpdate(msg);
+    }
 
-        QByteArray encryptedBuffer;
+    if ((m_icp.bytesRead + PKTHEADERSIZE) == m_icp.pktSize) {
+        // We have the entire message
 
-        while (pktSize > 0) {
-            // TODO check error message of readAll
-            encryptedBuffer.append(m_socket->readAll());
-            pktSize -= encryptedBuffer.size();
-        }
-        qDebug() << "past while loop!";
-        QByteArray decryptedBuffer = Util::aesDecrypt(m_passphrase, encryptedBuffer);
-        qDebug() << "decryptedBuffer.size:" << decryptedBuffer.size();
+        QByteArray decryptedBuffer = Util::aesDecrypt(m_passphrase, m_icp.encryptedBuffer);
 
-        if (pktType == MSGPKT) {
+        if (m_icp.pktType == MSGPKT) {
             emit msgReceived(decryptedBuffer);
-        } else if (pktType == FILEPKT) {
+        } else if (m_icp.pktType == FILEPKT) {
+
             quint32 fileNameSize;
             memcpy(&fileNameSize, &decryptedBuffer.data()[0], sizeof(fileNameSize));
 
@@ -120,10 +103,6 @@ void Client::readyRead()
             for (int i = fileDataIndex; i < decryptedBuffer.size(); i ++) {
                 fileData.append(decryptedBuffer[i]);
             }
-            qDebug() << "pkt minus header size:" << decryptedBuffer.size();
-            qDebug() << "fileNameSize:" << fileNameSize;
-            qDebug() << "fileName:" << fileName;
-            qDebug() << "fileData.size:" << fileData.size();
 
             QFile file(fileName);
             file.open(QFile::WriteOnly);
@@ -135,18 +114,14 @@ void Client::readyRead()
             qCritical() << "ERROR: read wrong packet type";
             return;
         }
+
+        // Reset the incoming packet information for the next packet
+        m_icp.reset();
     }
 }
 
 void Client::run()
 {
-    m_socket = new QTcpSocket(this);
-
-    connect(m_socket, SIGNAL(bytesWritten(qint64)), this, SLOT(bytesWritten(qint64)));
-    connect(m_socket, SIGNAL(connected()), this, SLOT(connected()));
-    connect(m_socket, SIGNAL(disconnected()), this, SLOT(disconnected()));
-    connect(m_socket, SIGNAL(readyRead()), this, SLOT(readyRead()));
-
     connectToServer();
 }
 
@@ -157,14 +132,11 @@ void Client::initialize(QThread &t)
 
 void Client::sendMsg(QString string)
 {
-    qDebug() << "Client sendMsg TODO";
     QByteArray msgArray = string.toUtf8();
     quint16 pktType = MSGPKT;
 
     // Encrypt msg with AES before sending pkt
     QByteArray encrypted = Util::aesEncrypt(m_passphrase, msgArray);
-    QString blah = QString(QCryptographicHash::hash(encrypted,QCryptographicHash::Md5).toHex());
-    qDebug() << "encrypted md5:" << blah;
     quint32 msgSize = encrypted.size();
     quint32 pktSize = sizeof(quint32) + sizeof(pktType) + msgSize;
 
@@ -183,8 +155,7 @@ void Client::sendMsg(QString string)
 
 void Client::sendFile(QString fileName)
 {
-    qDebug() << "Server sendFile TODO encryption";
-    QString msg = "INFO: Reading " + fileName + "...";
+    QString msg = "INFO: Reading " + fileName + " ...";
     emit statusUpdate(msg);
 
     QFile file(fileName);
@@ -195,7 +166,7 @@ void Client::sendFile(QString fileName)
     msg = "INFO: Read " + QString::number(fileData.size()) + " bytes from " + fileName;
     emit statusUpdate(msg);
 
-    msg = "INFO: Sending file " + fileName + ", please wait...";
+    msg = "INFO: Sending file " + fileName + ", please wait ...";
     emit statusUpdate(msg);
 
     QStringList fileNameSplit = fileName.split('/');
@@ -214,17 +185,8 @@ void Client::sendFile(QString fileName)
     memcpy(&tmpPkt.data()[4 + fileNameSize], &fileData.data()[0], fileSize); // N
 
     QByteArray encrypted = Util::aesEncrypt(m_passphrase, tmpPkt);
-    QString blah = QString(QCryptographicHash::hash(encrypted,QCryptographicHash::Md5).toHex());
-    qDebug() << "encrypted md5:" << blah;
-    //quint32 pktSize = sizeof(quint32) + sizeof(pktType) + sizeof(fileNameSize) + fileNameSize + encrypted.size();
     quint32 pktSize = sizeof(quint32) + sizeof(pktType) + encrypted.size();
 
-    // pktSize
-    // pktType
-    // fileNameSize
-    // fileName
-
-    // quint32 pktSize = 4 + 2 + 4 + 3 + 196
     QByteArray pkt;
     pkt.resize(pktSize);
     memset(&pkt.data()[0], 0, pktSize);
@@ -232,60 +194,10 @@ void Client::sendFile(QString fileName)
     memcpy(&pkt.data()[4], &pktType, sizeof(pktType)); // 2
     memcpy(&pkt.data()[6], &encrypted.data()[0], encrypted.size());
 
-    qDebug() << "pktSize:" << pktSize;
-    qDebug() << "pktType:" << pktType;
-    qDebug() << "fileNameSize:" << fileNameSize;
-    qDebug() << "fileName:" << fileName;
-    qDebug() << "fileData.size:" << fileSize;
-
     m_socket->write(pkt);
     while (m_socket->bytesToWrite() > 0) {
         m_socket->waitForBytesWritten(10000);
     }
-/*    int pktChunkSize = 100;
-    for (int i = 0; i < (pktSize / pktChunkSize); i++) {
-        qint64 bytesWritten = 0;
-        while (bytesWritten < pktChunkSize) {
-            qint64 wrote = m_socket->write(&pkt.constData()[bytesWritten], pktChunkSize);
-            m_socket->flush();
-            if (m_socket->bytesToWrite() > 0) {
-                m_socket->waitForBytesWritten(10000);
-            }
-            if (wrote == -1) {
-                qCritical() << "ERROR: could not write all of file pkt to socket";
-                return;
-            }
-            qDebug() << "Wrote" << wrote << "bytes to the socket";
-
-            bytesWritten += wrote;
-            QThread::msleep(200);
-            qDebug() << "Total bytes wrote" << i << ":" << bytesWritten << "of" << pktSize;
-        }
-    }
-    if (pktSize % pktChunkSize) {
-        qint64 bytesWritten = 0;
-        while (bytesWritten < (pktSize % pktChunkSize)) {
-            qint64 wrote = m_socket->write(&pkt.constData()[bytesWritten], (pktSize % pktChunkSize));
-            m_socket->flush();
-            if (m_socket->bytesToWrite() > 0) {
-                m_socket->waitForBytesWritten(10000);
-            }
-            if (wrote == -1) {
-                qCritical() << "ERROR: could not write all of file pkt to socket";
-                return;
-            }
-            qDebug() << "% Wrote" << wrote << "bytes to the socket";
-            bytesWritten += wrote;
-            qDebug() << "% Total bytes wrote" << ":" << bytesWritten << "of" << pktSize;
-        }
-    }
-*/
-    QFile f("client.encrypted");
-    f.open(QFile::WriteOnly);
-    f.write(encrypted);
-    f.close();
-
-
     msg = "INFO: Completed sending file " + fileName + " to friend";
     emit statusUpdate(msg);
 }

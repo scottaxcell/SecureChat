@@ -14,8 +14,6 @@ void Util::handleIncomingPacket(QTcpSocket *socket, IncomingPacket &icp)
         QByteArray buffer = socket->read(PKTHEADERSIZE);
         memcpy(&icp.pktSize, &buffer.constData()[0], sizeof(icp.pktSize));
         memcpy(&icp.pktType, &buffer.constData()[4], sizeof(icp.pktType));
-        qDebug() << "pktSize:" << icp.pktSize;
-        qDebug() << "pktType:" << icp.pktType;
         buffer.clear();
         icp.encryptedBuffer.resize(icp.pktSize - PKTHEADERSIZE);
     }
@@ -26,7 +24,6 @@ void Util::handleIncomingPacket(QTcpSocket *socket, IncomingPacket &icp)
             qCritical() << "ERROR: could not read entire packet";
             return;
         }
-        qDebug() << "Read" << read << "bytes from the socket";
         icp.bytesRead += read;
     }
     qDebug() << "Total bytes read:" << icp.bytesRead;
@@ -101,33 +98,17 @@ QByteArray Util::aesEncrypt(QByteArray &passphrase, QByteArray &data)
 
     char *input = data.data();
     int inputLength = data.size();
-    //int outputLength = inputLength + AES_BLOCK_SIZE;
     unsigned char *output = (unsigned char*)malloc(inputLength + EVP_CIPHER_CTX_block_size(&ctx));
 
-//    if (!EVP_EncryptInit_ex(&ctx, nullptr, nullptr, nullptr, nullptr)) {
-//        qCritical() << "EVP_EncryptInit_ex() ERROR: " << ERR_error_string(ERR_get_error(), nullptr);
-//        return QByteArray();
-//    }
-
-    int chunkSize = 50;
     int tmp = 0;
     int outputLength = 0;
-//    for (int i = 0; i < (inputLength / chunkSize); i++) {
-        //if (!EVP_EncryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], chunkSize)) {
-        if (!EVP_EncryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], inputLength)) {
-            qCritical() << "EVP_EncryptUpdate() ERROR: " << ERR_error_string(ERR_get_error(), nullptr);
-            return QByteArray();
-        }
-        outputLength += tmp;
-//    }
 
-//    if (inputLength % chunkSize) {
-//        if (!EVP_EncryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], inputLength % chunkSize)) {
-//            qCritical() << "EVP_EncryptUpdate() ERROR: " << ERR_error_string(ERR_get_error(), nullptr);
-//            return QByteArray();
-//        }
-//        outputLength += tmp;
-//    }
+    if (!EVP_EncryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], inputLength)) {
+        qCritical() << "EVP_EncryptUpdate() ERROR: " << ERR_error_string(ERR_get_error(), nullptr);
+        return QByteArray();
+    }
+    outputLength += tmp;
+
 
     if (!EVP_EncryptFinal_ex(&ctx, &output[outputLength], &tmp)) {
         qCritical() << "EVP_EncryptFinal_ex() ERROR: "  << ERR_error_string(ERR_get_error(), nullptr);
@@ -140,9 +121,6 @@ QByteArray Util::aesEncrypt(QByteArray &passphrase, QByteArray &data)
     ret.append("Salted__");
     ret.append(saltArray);
     ret.append(encrypted);
-
-    qDebug() << "before encryptFinal inputLength:" << inputLength;
-    qDebug() << "before encryptFinal outputLength:" << outputLength;
 
     free(output);
     EVP_CIPHER_CTX_cleanup(&ctx);
@@ -186,43 +164,25 @@ QByteArray Util::aesDecrypt(QByteArray &passphrase, QByteArray &data)
     int inputLength = data.size();
     int outputLength = 0;
 
-    //unsigned char *output = (unsigned char *)malloc(inputLength + EVP_CIPHER_CTX_block_size(&ctx));
-    unsigned char *output = (unsigned char *)malloc((inputLength / EVP_CIPHER_CTX_block_size(&ctx) * EVP_CIPHER_CTX_block_size(&ctx)) + EVP_CIPHER_CTX_block_size(&ctx));
+    unsigned char *output = (unsigned char *)malloc(inputLength + EVP_CIPHER_CTX_block_size(&ctx));
 
     int tmp = 0;
-    //for (int i = 0; i < (inputLength / chunkSize); i++) {
-        if (!EVP_DecryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], inputLength)) {
-            qCritical() << "EVP_DecryptUpdate() ERROR: " <<  ERR_error_string(ERR_get_error(), nullptr);
-            return QByteArray();
-        }
-        outputLength += tmp;
-    //}
-
-//    if (inputLength % chunkSize) {
-//        if (!EVP_DecryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], inputLength % chunkSize)) {
-//            qCritical() << "EVP_DecryptUpdate() ERROR: " << ERR_error_string(ERR_get_error(), nullptr);
-//            return QByteArray();
-//        }
-//        outputLength += tmp;
-//    }
-    qDebug() << "before decryptFinal inputLength:" << inputLength;
-    qDebug() << "before decryptFinal outputLength:" << outputLength;
+    if (!EVP_DecryptUpdate(&ctx, &output[outputLength], &tmp, (unsigned char *)&input[outputLength], inputLength)) {
+        qCritical() << "EVP_DecryptUpdate() ERROR: " <<  ERR_error_string(ERR_get_error(), nullptr);
+        return QByteArray();
+    }
+    outputLength += tmp;
 
     if (!EVP_DecryptFinal_ex(&ctx, &output[outputLength], &tmp)) {
         qCritical() << "EVP_DecryptFinal_ex() ERROR: " <<  ERR_error_string(ERR_get_error(), nullptr);
         return QByteArray();
     }
     outputLength += tmp;
-    qDebug() << "after decryptFinal outputLength:" << outputLength;
-    EVP_CIPHER_CTX_cleanup(&ctx);
 
+    EVP_CIPHER_CTX_cleanup(&ctx);
 
     QByteArray decrypted = QByteArray(reinterpret_cast<char*>(output), outputLength);
     free(output);
 
     return decrypted;
 }
-
-
-
-
