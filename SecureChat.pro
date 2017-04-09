@@ -50,3 +50,6 @@ macx: {
     LIBS += /usr/local/Cellar/openssl/1.0.2g/lib/libcrypto.a
     LIBS += /usr/local/Cellar/openssl/1.0.2g/lib/libssl.a
 }
+
+RESOURCES += \
+    chatsymbol.qrc
