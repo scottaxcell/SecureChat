@@ -19,7 +19,7 @@ README
 Build Linux:
 mkdir linuxRelease
 cd linuxRelease
-/usr/lib64/qt5/bin/qmake-qt5 SecureChat.pro
+/usr/lib64/qt5/bin/qmake-qt5 ../SecureChat.pro
 make all
 
 Build MacOS:
