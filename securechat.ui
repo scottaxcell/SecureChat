@@ -96,7 +96,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Send FIle</string>
+     <string>Send File</string>
     </property>
    </widget>
    <widget class="QLabel" name="label">
