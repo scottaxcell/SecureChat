@@ -32,5 +32,15 @@ Note: 'other user public key file' is the public RSA key file of the person you
       are wanting to chat with. 'your private key file' is your own personal
       private RSA key file. So Alice would load Bob's public key and her own
       private key, while Bob would load Alice's public ket and his own private
-      key.
+      key. The server will display the IP address and port number that the client
+      needs to specify to create a connection to the server.
+
+====================================
+Example public and private RSA files
+====================================
+For testing convenience I've included example public and private RSA files for two users.
+alice_rsa.pub
+alice_rsa.priv
+bob_rsa.pub
+bob_rsa.priv
 
